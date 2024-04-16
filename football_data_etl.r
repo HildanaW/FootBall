@@ -15,11 +15,6 @@ roster_tab <- webpage %>%
   html_table(fill = TRUE)
 
 # Convert from lists to data frames
-
-
-
-
-#Need to fix
 df_roster <- as.data.frame(roster_tab[[3]])
 coach_df <- as.data.frame(roster_tab[[4]])
 #coach_df without NA columns for images
