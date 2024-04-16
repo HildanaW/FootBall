@@ -16,6 +16,8 @@ roster_tab <- webpage %>%
 
 # Convert from lists to data frames
 df_roster <- as.data.frame(roster_tab[[3]])
+
+#do not write to csv
 coach_df <- as.data.frame(roster_tab[[4]])
 #coach_df without NA columns for images
 subset_df <- coach_df[, c(2, 3)]
@@ -152,6 +154,27 @@ for (i in 1:length(all_tables_data)) {
   assign(paste0("table_", i), df)
 }
 
+# Rename the data frames
+rushing_team_stats <- table_1
+first_downs_team_stats <- table_2
+passing_team_stats <- table_3
+receiving_team_stats <- table_4
+total_offense_team_stats <- table_5
+all_purpose_yards_team_stats <- table_6
+scoring_team_stats <- table_7
+sacks_team_stats <- table_8
+tackles_team_stats <- table_9
+passes_defended_team_stats <- table_10
+fumbles_team_stats <- table_11
+kicking_team_stats <- table_12
+punting_team_stats <- table_13
+punt_returns_team_stats <- table_14
+ko_and_ko_return_team_stats <- table_15
+redzone_team_stats <- table_16
+defense_team_stats <- table_17
+turnover_margin_team_stats <- table_18
+particpation_team_stats <- table_19
+
 
 
 game_by_game_url_base <- "https://stats.ncaa.org/player/index?id=16460&org_id=40&stats_player_seq=-100&year_stat_category_id="
@@ -217,6 +240,26 @@ for (year_stat_category_id in names(desired_tables)) {
   # Assign the data frame to a variable
   assign(paste0("table_", year_stat_category_id), df)
 }
+
+# Rename the data frames
+rushing_game_stats <- table_15040
+first_downs_game_stats <- table_15041
+passing_game_stats <- table_15042
+receiving_game_stats <- table_15043
+total_offense_game_stats <- table_15044
+all_purpose_yards_game_stats <- table_15045
+scoring_game_stats <- table_15046
+sacks_game_stats <- table_15047
+tackles_game_stats <- table_15048
+passes_defended_game_stats <- table_15049
+fumbles_game_stats <- table_15050
+kicking_game_stats <- table_15051
+punting_game_stats <- table_15052
+punt_returns_game_stats <- table_15053
+ko_and_ko_return_game_stats <- table_15054
+redzone_game_stats <- table_15055
+defense_game_stats <- table_15056
+turnover_margin_game_stats <- table_15057
 
 
 
