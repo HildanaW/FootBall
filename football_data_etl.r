@@ -1,6 +1,9 @@
 # Load necessary packages
 library(rvest)
 library(httr)
+library(tidyr)
+library(dplyr)
+library(stringr)
 
 rm(list = ls())
 
@@ -285,9 +288,167 @@ tables <- html_nodes(webpage, "table")
 conf_table <- html_table(tables[[2]], fill = TRUE)
 conf_table_2 <- html_table(tables[[3]], fill = TRUE)
 
-#two tables above need to be fixed before being loaded in 
-#want team, national rank, and value split out by row
-#should have 470 observations instead of 47
+# Rename the sixth column to "LeaderValue"
+colnames(conf_table)[6] <- "LeaderValue"
+
+# Create an empty data frame to store the transformed data
+transformed_df <- data.frame(matrix(ncol = ncol(conf_table), nrow = nrow(conf_table) * 10), stringsAsFactors = FALSE)
+colnames(transformed_df) <- colnames(conf_table)
+
+# Duplicate all columns
+for (col in colnames(conf_table)[-6]) {
+  transformed_df[[col]] <- rep(conf_table[[col]], each = 10)
+}
+
+# Store LeaderValue column separately
+leader_values <- rep(conf_table$LeaderValue, each = 10)
+
+# Split the team names in column 2 and create new rows
+team_list <- strsplit(conf_table$Team, "\n")
+
+for (i in 1:nrow(conf_table)) {
+  team_names <- team_list[[i]]
+  team_count <- length(team_names)
+  if (team_count > 10) {
+    team_names <- team_names[1:10]  # Limit to first 10 elements
+  } else if (team_count < 10) {
+    team_names <- c(team_names, rep("", 10 - team_count))  # Fill with empty strings if less than 10
+  }
+  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 2] <- trimws(team_names)
+}
+
+# Split the national ranks in column 3 and create new rows
+national_rank_list <- strsplit(conf_table$NationalRank, "\n")
+
+for (i in 1:nrow(conf_table)) {
+  national_ranks <- national_rank_list[[i]]
+  national_rank_count <- length(national_ranks)
+  if (national_rank_count > 10) {
+    national_ranks <- national_ranks[1:10]  # Limit to first 10 elements
+  } else if (national_rank_count < 10) {
+    national_ranks <- c(national_ranks, rep("", 10 - national_rank_count))  # Fill with empty strings if less than 10
+  }
+  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 3] <- trimws(national_ranks)
+}
+
+# Split the values in column 4 and create new rows
+value_list <- strsplit(conf_table$Value, "\n")
+
+for (i in 1:nrow(conf_table)) {
+  values <- value_list[[i]]
+  value_count <- length(values)
+  if (value_count > 10) {
+    values <- values[1:10]  # Limit to first 10 elements
+  } else if (value_count < 10) {
+    values <- c(values, rep("", 10 - value_count))  # Fill with empty strings if less than 10
+  }
+  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 4] <- trimws(values)
+}
+
+# Split the values in column 5 and only store the first element
+national_leader_list <- lapply(strsplit(conf_table$'National Leader', "\n"), function(x) x[1])
+
+# Create new rows
+for (i in 1:nrow(conf_table)) {
+  values <- national_leader_list[[i]]
+  first_value <- values[1]  # Extract the first value
+  value_count <- length(values)
+  
+  if (value_count < 10) {
+    values <- c(rep(first_value, 10 - value_count), values)  # Fill with first value if less than 10
+  } else {
+    values <- values[1:10]  # Limit to first 10 elements
+  }
+  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 5] <- trimws(values)
+}
+
+# Append LeaderValue column
+transformed_df$LeaderValue <- trimws(leader_values)
+
+# Revert the naming of the dataframe
+conf_table <- transformed_df
+
+
+
+# Rename the sixth column to "LeaderValue"
+colnames(conf_table_2)[6] <- "LeaderValue"
+
+# Create an empty data frame to store the transformed data
+transformed_df_2 <- data.frame(matrix(ncol = ncol(conf_table_2), nrow = nrow(conf_table_2) * 10), stringsAsFactors = FALSE)
+colnames(transformed_df_2) <- colnames(conf_table_2)
+
+# Duplicate all columns
+for (col in colnames(conf_table_2)[-6]) {
+  transformed_df_2[[col]] <- rep(conf_table_2[[col]], each = 10)
+}
+
+# Store LeaderValue column separately
+leader_values_2 <- rep(conf_table_2$LeaderValue, each = 10)
+
+# Split the player names in column 2 and create new rows
+player_list_2 <- strsplit(conf_table_2$Player, "\n")
+
+for (i in 1:nrow(conf_table_2)) {
+  player_names <- player_list_2[[i]]
+  player_count <- length(player_names)
+  if (player_count > 10) {
+    player_names <- player_names[1:10]  # Limit to first 10 elements
+  } else if (player_count < 10) {
+    player_names <- c(player_names, rep("", 10 - player_count))  # Fill with empty strings if less than 10
+  }
+  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 2] <- trimws(player_names)
+}
+
+# Split the national ranks in column 3 and create new rows
+national_rank_list_2 <- strsplit(conf_table_2$NationalRank, "\n")
+
+for (i in 1:nrow(conf_table_2)) {
+  national_ranks <- national_rank_list_2[[i]]
+  national_rank_count <- length(national_ranks)
+  if (national_rank_count > 10) {
+    national_ranks <- national_ranks[1:10]  # Limit to first 10 elements
+  } else if (national_rank_count < 10) {
+    national_ranks <- c(national_ranks, rep("", 10 - national_rank_count))  # Fill with empty strings if less than 10
+  }
+  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 3] <- trimws(national_ranks)
+}
+
+# Split the values in column 4 and create new rows
+value_list_2 <- strsplit(conf_table_2$Value, "\n")
+
+for (i in 1:nrow(conf_table_2)) {
+  values <- value_list_2[[i]]
+  value_count <- length(values)
+  if (value_count > 10) {
+    values <- values[1:10]  # Limit to first 10 elements
+  } else if (value_count < 10) {
+    values <- c(values, rep("", 10 - value_count))  # Fill with empty strings if less than 10
+  }
+  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 4] <- trimws(values)
+}
+
+# Split the values in column 5 and only store the first element
+national_leader_list_2 <- lapply(strsplit(conf_table_2$'National Leader', "\n"), function(x) x[1])
+
+# Create new rows
+for (i in 1:nrow(conf_table_2)) {
+  values <- national_leader_list_2[[i]]
+  first_value <- values[1]  # Extract the first value
+  value_count <- length(values)
+  
+  if (value_count < 10) {
+    values <- c(rep(first_value, 10 - value_count), values)  # Fill with first value if less than 10
+  } else {
+    values <- values[1:10]  # Limit to first 10 elements
+  }
+  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 5] <- trimws(values)
+}
+
+# Append LeaderValue column
+transformed_df_2$LeaderValue <- trimws(leader_values_2)
+
+# Revert the naming of the dataframe
+conf_table_2 <- transformed_df_2
 
 
 
