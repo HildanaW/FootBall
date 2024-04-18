@@ -26,30 +26,6 @@ coach_df <- as.data.frame(roster_tab[[4]])
 subset_df <- coach_df[, c(2, 3)]
 
 
-# # URL of the player's profile page
-# url <- "https://athletics.augustana.edu/sports/football/roster/john-bolton/10758"
-# 
-# # Read HTML content of the player's profile page
-# webpage <- read_html(url)
-# 
-# # Extract the image URL using XPath selector
-# image_url <- webpage %>%
-#   html_node(xpath = "//img[contains(@data-airgap-id, '45')]") %>%
-#   html_attr("src")
-# 
-# # Print the image URL
-# print(image_url)
-
-#Matt said pictures of all the players in the roster would be nice to have
-#I could not figure out how to do this
-
-
-
-
-
-
-
-
 schedule_results_url <- "https://stats.ncaa.org/teams/558188"
 
 # Read HTML content of the webpage
