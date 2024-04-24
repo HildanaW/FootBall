@@ -6,11 +6,17 @@ library(dplyr)
 library(stringr)
 library(openxlsx)
 
+rm(list = ls())
+
 # set your working directory to where you want the data tables to be loaded into
 # located in the settings gear
 
+# MUST READ
+# Since this code does not accept/require inputs, the urls will need to be manually updated
+# Any 16460 value in a url should be replaced with 16680 for 2024-25
+# The year value in the national_ranking_summary_url will need to be changed from 2024 to 2025
 
-rm(list = ls())
+# This code can be ran all at one time
 
 roster_website_url <- "https://athletics.augustana.edu/sports/football/roster?view=2"
 
@@ -25,24 +31,26 @@ roster_tab <- webpage %>%
 # Convert from lists to data frames
 df_roster <- as.data.frame(roster_tab[[3]])
 
-#do not write to csv
 coach_df <- as.data.frame(roster_tab[[4]])
 #coach_df without NA columns for images
 coach_df <- coach_df[, c(2, 3)]
 
 # Load existing Excel file
-wb <- loadWorkbook("Football Spotterboards.xlsx")
+wb <- loadWorkbook("Football Spotterboards - Copy.xlsx")
 
-# addWorksheet(wb, "Roster")
+# Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
+removeWorksheet(wb, "Roster")
+addWorksheet(wb, "Roster")
+
 # Write the first dataframe to the Excel file starting at row 1, column 1
 writeData(wb, sheet = "Roster", x = df_roster, startRow = 1, startCol = 1)
 writeData(wb, sheet = "Roster", x = coach_df, startRow = 1, startCol = 11)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
 
 
-
+# URL for first page of any team on ncaa stats site
 schedule_results_url <- "https://stats.ncaa.org/teams/558188"
 
 # Read HTML content of the webpage
@@ -74,13 +82,16 @@ individual_stat_leaders <- chart_4[-1, ]
 
 schedule_results <- chart_2[c(TRUE, FALSE), ]
 
-# addWorksheet(wb, "ScheduleResults")
+# Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
+removeWorksheet(wb, "ScheduleResults")
+addWorksheet(wb, "ScheduleResults")
+
 writeData(wb, sheet = "ScheduleResults", x = schedule_results, startRow = 1, startCol = 1)
 writeData(wb, sheet = "ScheduleResults", x = team_stats, startRow = 1, startCol = 6)
 writeData(wb, sheet = "ScheduleResults", x = individual_stat_leaders, startRow = 1, startCol = 10)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
 
 
 
@@ -179,7 +190,50 @@ defense_team_stats <- table_17
 turnover_margin_team_stats <- table_18
 participation_team_stats <- table_19
 
-# addWorksheet(wb, "TeamStats")
+# Replace NA values with blanks in each dataframe to prevent errors when loading data into excel
+rushing_team_stats <- rushing_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+first_downs_team_stats <- first_downs_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+passing_team_stats <- passing_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+receiving_team_stats <- receiving_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+total_offense_team_stats <- total_offense_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+all_purpose_yards_team_stats <- all_purpose_yards_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+scoring_team_stats <- scoring_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+sacks_team_stats <- sacks_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+tackles_team_stats <- tackles_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+passes_defended_team_stats <- passes_defended_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+fumbles_team_stats <- fumbles_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+kicking_team_stats <- kicking_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+punting_team_stats <- punting_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+punt_returns_team_stats <- punt_returns_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+ko_and_ko_return_team_stats <- ko_and_ko_return_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+redzone_team_stats <- redzone_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+defense_team_stats <- defense_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+turnover_margin_team_stats <- turnover_margin_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+participation_team_stats <- participation_team_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+
+# Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
+removeWorksheet(wb, "TeamStats")
+addWorksheet(wb, "TeamStats")
+
 writeData(wb, sheet = "TeamStats", x = rushing_team_stats, startRow = 1, startCol = 1)
 writeData(wb, sheet = "TeamStats", x = first_downs_team_stats, startRow = 1, startCol = 19)
 writeData(wb, sheet = "TeamStats", x = passing_team_stats, startRow = 1, startCol = 32)
@@ -201,7 +255,7 @@ writeData(wb, sheet = "TeamStats", x = turnover_margin_team_stats, startRow = 1,
 writeData(wb, sheet = "TeamStats", x = participation_team_stats, startRow = 1, startCol = 317)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
 
 
 
@@ -290,10 +344,50 @@ defense_game_stats <- table_15056
 turnover_margin_game_stats <- table_15057
 
 # Removing rows with NA values that were disrupting loading process
+rushing_game_stats <- rushing_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+first_downs_game_stats <- first_downs_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+passing_game_stats <- passing_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+receiving_game_stats <- receiving_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+total_offense_game_stats <- total_offense_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+all_purpose_yards_game_stats <- all_purpose_yards_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
 scoring_game_stats <- scoring_game_stats[, -ncol(scoring_game_stats)]
+scoring_game_stats <- scoring_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+sacks_game_stats <- sacks_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+tackles_game_stats <- tackles_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+passes_defended_game_stats <- passes_defended_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+fumbles_game_stats <- fumbles_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
 kicking_game_stats <- kicking_game_stats[, 1:8]
+kicking_game_stats <- kicking_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+punting_game_stats <- punting_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+punt_returns_game_stats <- punt_returns_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+ko_and_ko_return_game_stats <- ko_and_ko_return_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+redzone_game_stats <- redzone_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+defense_game_stats <- defense_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
+turnover_margin_game_stats <- turnover_margin_game_stats %>%
+  mutate_all(~ ifelse(is.na(.), "", .))
 
-# addWorksheet(wb, "GameStats")
+
+# Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
+removeWorksheet(wb, "GameStats")
+addWorksheet(wb, "GameStats")
+
 writeData(wb, sheet = "GameStats", x = rushing_game_stats, startRow = 1, startCol = 1)
 writeData(wb, sheet = "GameStats", x = first_downs_game_stats, startRow = 1, startCol = 14)
 writeData(wb, sheet = "GameStats", x = passing_game_stats, startRow = 1, startCol = 22)
@@ -314,7 +408,7 @@ writeData(wb, sheet = "GameStats", x = defense_game_stats, startRow = 1, startCo
 writeData(wb, sheet = "GameStats", x = turnover_margin_game_stats, startRow = 1, startCol = 208)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
 
 
 
@@ -502,14 +596,17 @@ transformed_df_2$LeaderValue <- trimws(leader_values_2)
 # Revert the naming of the dataframe
 conf_table_2 <- transformed_df_2
 
-# addWorksheet(wb, "Rankings")
+# Clear all data in the "Rankings" sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
+removeWorksheet(wb, "Rankings")
+addWorksheet(wb, "Rankings")
+
 writeData(wb, sheet = "Rankings", x = natl_table, startRow = 1, startCol = 1)
 writeData(wb, sheet = "Rankings", x = natl_table_2, startRow = 1, startCol = 10)
 writeData(wb, sheet = "Rankings", x = conf_table, startRow = 1, startCol = 20)
 writeData(wb, sheet = "Rankings", x = conf_table_2, startRow = 1, startCol = 27)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
 
 
 
