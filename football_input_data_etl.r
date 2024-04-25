@@ -15,8 +15,8 @@ rm(list = ls())
 # For the lines below (through team_id_input), you need to run them one at a time and enter the desired values for each in the console area below
 # Make sure you click in the console interface before typing
 # Once you have entered your value and hit enter, these values will be stored as objects in the environment area (top right window)
-# For context on what values to enter, see comments above and below (text following the #'s) the next seven lines of code
-# The rest of the script begins on line 120 - can run the whole script from there on
+# For context on what values to enter, see comments above and below (text following the #'s) the next eight lines of code
+# The rest of the script begins on line 126 - can run the whole script from there on
 
 
 
@@ -26,9 +26,6 @@ year_input <- readline("Enter year: ")
 # Value will almost always be 3
 division_input <- readline("Enter division number: ")
 
-# This is included so that the conference ranking tables populate correctly if Augustana plays a team outside of the CCIW
-# Tables may not work properly if there are not 10 teams in the opposing team's conference
-# In that case, try replacing all 10 values in relevant code with the proper number of teams in a given conference
 conference_input <- readline("Enter conference code: ")
 # conference codes
 # "ASC" = "14825",
@@ -62,6 +59,11 @@ conference_input <- readline("Enter conference code: ")
 # "USA South" = "842",
 # "WIAC" = "1473"
 
+teams_in_conference <- as.numeric(readline("Enter number of team's in chosen conference: "))
+# CCIW has 10
+# American Rivers has 9
+# WIAC has 8
+
 # Prompt the user to enter input
 roster_website_url <- readline("Enter team's roster url: ")
 # conference roster urls
@@ -75,6 +77,10 @@ roster_website_url <- readline("Enter team's roster url: ")
 # "Wheaton Thunder" = https://athletics.wheaton.edu/sports/football/roster
 # "Elmhurst BlueJays" = https://elmhurstbluejays.com/sports/football/roster
 # "WashU Bears" = https://washubears.com/sports/football/roster
+
+# # This input may be needed if team's roster webpage is not structured like those in the CCIW that we tested
+# # See comment on line 133 for further detail
+# coach_website_url <- readline("Enter team's coach url: ")
 
 # Prompt the user to enter input
 year_team_classifier_input <- readline("Enter year/team classifier: ")
@@ -124,6 +130,18 @@ roster_tab <- webpage %>%
   html_nodes("table") %>%
   html_table(fill = TRUE)
 
+# # NOTE: If you receive an error saying subscript is out of bounds, that means the roster page is structured differently than for teams in the CCIW
+# # Play with the index to see if that works
+# # If coach table is generating issues, uncomment the code below and update the code 14 lines down accordingly (e.g., change roster_tab to coach_tab) 
+
+# # Read HTML content of the webpage
+# webpage <- read_html(coach_website_url)
+# 
+# # Extract coach table
+# coach_tab <- webpage %>%
+#   html_nodes("table") %>%
+#   html_table(fill = TRUE)
+
 # Convert from lists to data frames
 df_roster <- as.data.frame(roster_tab[[3]])
 opp_df_roster <- df_roster[, colSums(is.na(df_roster)) == 0]
@@ -142,7 +160,7 @@ addWorksheet(wb, "OppRoster")
 # Write the first dataframe to the Excel file starting at row 1, column 1
 writeData(wb, sheet = "OppRoster", x = opp_df_roster, startRow = 1, startCol = 1)
 writeData(wb, sheet = "OppRoster", x = opp_coach_df, startRow = 1, startCol = 11)
- 
+
 # Save the modified Excel file
 saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
 
@@ -538,16 +556,16 @@ opp_conf_table_2 <- html_table(tables[[3]], fill = TRUE)
 colnames(opp_conf_table)[6] <- "LeaderValue"
 
 # Create an empty data frame to store the transformed data
-transformed_df <- data.frame(matrix(ncol = ncol(opp_conf_table), nrow = nrow(opp_conf_table) * 10), stringsAsFactors = FALSE)
+transformed_df <- data.frame(matrix(ncol = ncol(opp_conf_table), nrow = nrow(opp_conf_table) * teams_in_conference), stringsAsFactors = FALSE)
 colnames(transformed_df) <- colnames(opp_conf_table)
 
 # Duplicate all columns
 for (col in colnames(opp_conf_table)[-6]) {
-  transformed_df[[col]] <- rep(opp_conf_table[[col]], each = 10)
+  transformed_df[[col]] <- rep(opp_conf_table[[col]], each = teams_in_conference)
 }
 
 # Store LeaderValue column separately
-leader_values <- rep(opp_conf_table$LeaderValue, each = 10)
+leader_values <- rep(opp_conf_table$LeaderValue, each = teams_in_conference)
 
 # Split the team names in column 2 and create new rows
 team_list <- strsplit(opp_conf_table$Team, "\n")
@@ -555,12 +573,12 @@ team_list <- strsplit(opp_conf_table$Team, "\n")
 for (i in 1:nrow(opp_conf_table)) {
   team_names <- team_list[[i]]
   team_count <- length(team_names)
-  if (team_count > 10) {
-    team_names <- team_names[1:10]  # Limit to first 10 elements
-  } else if (team_count < 10) {
-    team_names <- c(team_names, rep("", 10 - team_count))  # Fill with empty strings if less than 10
+  if (team_count > teams_in_conference) {
+    team_names <- team_names[1:teams_in_conference]  # Limit to first teams_in_conference elements
+  } else if (team_count < teams_in_conference) {
+    team_names <- c(team_names, rep("", teams_in_conference - team_count))  # Fill with empty strings if less than teams_in_conference
   }
-  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 2] <- trimws(team_names)
+  transformed_df[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 2] <- trimws(team_names)
 }
 
 # Split the national ranks in column 3 and create new rows
@@ -569,12 +587,12 @@ national_rank_list <- strsplit(opp_conf_table$NationalRank, "\n")
 for (i in 1:nrow(opp_conf_table)) {
   national_ranks <- national_rank_list[[i]]
   national_rank_count <- length(national_ranks)
-  if (national_rank_count > 10) {
-    national_ranks <- national_ranks[1:10]  # Limit to first 10 elements
-  } else if (national_rank_count < 10) {
-    national_ranks <- c(national_ranks, rep("", 10 - national_rank_count))  # Fill with empty strings if less than 10
+  if (national_rank_count > teams_in_conference) {
+    national_ranks <- national_ranks[1:teams_in_conference]  # Limit to first teams_in_conference elements
+  } else if (national_rank_count < teams_in_conference) {
+    national_ranks <- c(national_ranks, rep("", teams_in_conference - national_rank_count))  # Fill with empty strings if less than teams_in_conference
   }
-  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 3] <- trimws(national_ranks)
+  transformed_df[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 3] <- trimws(national_ranks)
 }
 
 # Split the values in column 4 and create new rows
@@ -583,12 +601,12 @@ value_list <- strsplit(opp_conf_table$Value, "\n")
 for (i in 1:nrow(opp_conf_table)) {
   values <- value_list[[i]]
   value_count <- length(values)
-  if (value_count > 10) {
-    values <- values[1:10]  # Limit to first 10 elements
-  } else if (value_count < 10) {
-    values <- c(values, rep("", 10 - value_count))  # Fill with empty strings if less than 10
+  if (value_count > teams_in_conference) {
+    values <- values[1:teams_in_conference]  # Limit to first teams_in_conference elements
+  } else if (value_count < teams_in_conference) {
+    values <- c(values, rep("", teams_in_conference - value_count))  # Fill with empty strings if less than teams_in_conference
   }
-  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 4] <- trimws(values)
+  transformed_df[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 4] <- trimws(values)
 }
 
 # Split the values in column 5 and only store the first element
@@ -600,12 +618,12 @@ for (i in 1:nrow(opp_conf_table)) {
   first_value <- values[1]  # Extract the first value
   value_count <- length(values)
   
-  if (value_count < 10) {
-    values <- c(rep(first_value, 10 - value_count), values)  # Fill with first value if less than 10
+  if (value_count < teams_in_conference) {
+    values <- c(rep(first_value, teams_in_conference - value_count), values)  # Fill with first value if less than teams_in_conference
   } else {
-    values <- values[1:10]  # Limit to first 10 elements
+    values <- values[1:teams_in_conference]  # Limit to first teams_in_conference elements
   }
-  transformed_df[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 5] <- trimws(values)
+  transformed_df[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 5] <- trimws(values)
 }
 
 # Append LeaderValue column
@@ -620,16 +638,16 @@ opp_conf_table <- transformed_df
 colnames(opp_conf_table_2)[6] <- "LeaderValue"
 
 # Create an empty data frame to store the transformed data
-transformed_df_2 <- data.frame(matrix(ncol = ncol(opp_conf_table_2), nrow = nrow(opp_conf_table_2) * 10), stringsAsFactors = FALSE)
+transformed_df_2 <- data.frame(matrix(ncol = ncol(opp_conf_table_2), nrow = nrow(opp_conf_table_2) * teams_in_conference), stringsAsFactors = FALSE)
 colnames(transformed_df_2) <- colnames(opp_conf_table_2)
 
 # Duplicate all columns
 for (col in colnames(opp_conf_table_2)[-6]) {
-  transformed_df_2[[col]] <- rep(opp_conf_table_2[[col]], each = 10)
+  transformed_df_2[[col]] <- rep(opp_conf_table_2[[col]], each = teams_in_conference)
 }
 
 # Store LeaderValue column separately
-leader_values_2 <- rep(opp_conf_table_2$LeaderValue, each = 10)
+leader_values_2 <- rep(opp_conf_table_2$LeaderValue, each = teams_in_conference)
 
 # Split the player names in column 2 and create new rows
 player_list_2 <- strsplit(opp_conf_table_2$Player, "\n")
@@ -637,12 +655,12 @@ player_list_2 <- strsplit(opp_conf_table_2$Player, "\n")
 for (i in 1:nrow(opp_conf_table_2)) {
   player_names <- player_list_2[[i]]
   player_count <- length(player_names)
-  if (player_count > 10) {
-    player_names <- player_names[1:10]  # Limit to first 10 elements
-  } else if (player_count < 10) {
-    player_names <- c(player_names, rep("", 10 - player_count))  # Fill with empty strings if less than 10
+  if (player_count > teams_in_conference) {
+    player_names <- player_names[1:teams_in_conference]  # Limit to first teams_in_conference elements
+  } else if (player_count < teams_in_conference) {
+    player_names <- c(player_names, rep("", teams_in_conference - player_count))  # Fill with empty strings if less than teams_in_conference
   }
-  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 2] <- trimws(player_names)
+  transformed_df_2[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 2] <- trimws(player_names)
 }
 
 # Split the national ranks in column 3 and create new rows
@@ -651,12 +669,12 @@ national_rank_list_2 <- strsplit(opp_conf_table_2$NationalRank, "\n")
 for (i in 1:nrow(opp_conf_table_2)) {
   national_ranks <- national_rank_list_2[[i]]
   national_rank_count <- length(national_ranks)
-  if (national_rank_count > 10) {
-    national_ranks <- national_ranks[1:10]  # Limit to first 10 elements
-  } else if (national_rank_count < 10) {
-    national_ranks <- c(national_ranks, rep("", 10 - national_rank_count))  # Fill with empty strings if less than 10
+  if (national_rank_count > teams_in_conference) {
+    national_ranks <- national_ranks[1:teams_in_conference]  # Limit to first teams_in_conference elements
+  } else if (national_rank_count < teams_in_conference) {
+    national_ranks <- c(national_ranks, rep("", teams_in_conference - national_rank_count))  # Fill with empty strings if less than teams_in_conference
   }
-  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 3] <- trimws(national_ranks)
+  transformed_df_2[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 3] <- trimws(national_ranks)
 }
 
 # Split the values in column 4 and create new rows
@@ -665,12 +683,12 @@ value_list_2 <- strsplit(opp_conf_table_2$Value, "\n")
 for (i in 1:nrow(opp_conf_table_2)) {
   values <- value_list_2[[i]]
   value_count <- length(values)
-  if (value_count > 10) {
-    values <- values[1:10]  # Limit to first 10 elements
-  } else if (value_count < 10) {
-    values <- c(values, rep("", 10 - value_count))  # Fill with empty strings if less than 10
+  if (value_count > teams_in_conference) {
+    values <- values[1:teams_in_conference]  # Limit to first teams_in_conference elements
+  } else if (value_count < teams_in_conference) {
+    values <- c(values, rep("", teams_in_conference - value_count))  # Fill with empty strings if less than teams_in_conference
   }
-  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 4] <- trimws(values)
+  transformed_df_2[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 4] <- trimws(values)
 }
 
 # Split the values in column 5 and only store the first element
@@ -682,12 +700,12 @@ for (i in 1:nrow(opp_conf_table_2)) {
   first_value <- values[1]  # Extract the first value
   value_count <- length(values)
   
-  if (value_count < 10) {
-    values <- c(rep(first_value, 10 - value_count), values)  # Fill with first value if less than 10
+  if (value_count < teams_in_conference) {
+    values <- c(rep(first_value, teams_in_conference - value_count), values)  # Fill with first value if less than teams_in_conference
   } else {
-    values <- values[1:10]  # Limit to first 10 elements
+    values <- values[1:teams_in_conference]  # Limit to first teams_in_conference elements
   }
-  transformed_df_2[((i - 1) * 10 + 1):((i - 1) * 10 + 10), 5] <- trimws(values)
+  transformed_df_2[((i - 1) * teams_in_conference + 1):((i - 1) * teams_in_conference + teams_in_conference), 5] <- trimws(values)
 }
 
 # Append LeaderValue column
