@@ -291,6 +291,9 @@ for (player_id in names(all_tables_data)) {
     
     # Check if any data is available in columns 5 through the end
     if (any(sapply(df[1, 5:ncol(df)], function(x) !is.na(x) && x != ""))) {
+      # Remove columns with NA values
+      df <- df[, colSums(is.na(df)) == 0]
+      
       # Store the data frame in the desired_tables list
       desired_tables[[paste0(player_id, "_", cat_id)]] <- df
       
@@ -322,4 +325,5 @@ for (cat_id in names(desired_tables)) {
   # Assign the data frame to a variable with a specific name (e.g., table_15040, table_15041, ...)
   assign(paste0("table_", cat_id), desired_tables[[cat_id]])
 }
+
 
