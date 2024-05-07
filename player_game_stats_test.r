@@ -7,6 +7,8 @@ library(openxlsx)
 rm(list = ls())
 
 # This script is responsible for bringing in all of the player stats from the previous game played to be used in "L" section of player breakdowns
+# Update id (16460) with future year value on line 15 when running for 2024-25 season
+
 
 # Define function to scrape player data
 scrape_player_data <- function(player_id, category_id) {
@@ -263,11 +265,6 @@ for (player_id in player_ids) {
   all_tables_data[[as.character(player_id)]] <- player_tables
 }
 
-# Define a function to convert values to numeric
-convert_to_numeric <- function(x) {
-  ifelse(x == "", "", as.numeric(x))
-}
-
 # Create a named vector
 jersey_mapping <- setNames(jersey_numbers, player_ids)
 
@@ -321,22 +318,15 @@ for (player_id in names(all_tables_data)) {
       # Create a new data frame with "Jersey" as the first column
       new_df <- data.frame(Jersey = jersey_number, df)
       
-      # Convert to long format while keeping "Jersey" as the first column
-      new_df_long <- pivot_longer(new_df, cols = -Jersey, names_to = "Category", values_to = "Value")
+      # Convert columns 1 and 6 to the last column to numeric
+      numeric_cols <- c(1, 6:ncol(new_df))
+      # Convert columns 1 and 6 to the last column to numeric
+      numeric_cols <- c(1, 6:ncol(new_df))
+      new_df[, numeric_cols] <- lapply(new_df[, numeric_cols], function(x) ifelse(grepl("^-?\\d+\\.?\\d*$", as.character(x)), as.numeric(as.character(x)), x))
       
-      # Add a new row with jersey number information
-      new_row <- data.frame(Jersey = jersey_number, Category = "Jersey", Value = jersey_number)
-      new_df_final <- rbind(new_row, new_df_long)
-      
-      # Remove the "Jersey" column
-      new_df_final <- subset(new_df_final, select = -c(Jersey))
-      
-      # Apply the function to the specified range
-      new_df_final$Value[1] <- ifelse(new_df_final$Category[1] == "Value", convert_to_numeric(new_df_final$Value[1]), new_df_final$Value[1])
-      new_df_final$Value[6:nrow(new_df_final)] <- convert_to_numeric(new_df_final$Value[6:nrow(new_df_final)])
       
       # Update the desired_tables list with the new data frame
-      desired_tables[[paste0(player_id, "_", cat_id)]] <- new_df_final
+      desired_tables[[paste0(player_id, "_", cat_id)]] <- new_df
     }
   }
 }
@@ -347,31 +337,30 @@ for (cat_id in names(desired_tables)) {
   assign(paste0("table_", cat_id), desired_tables[[cat_id]])
 }
 
-# Create a new workbook
-wb <- createWorkbook()
+# Load existing Excel file
+wb <- loadWorkbook("PlayerData.xlsx")
 
-# Add a worksheet to the workbook
-addWorksheet(wb, "PlayerData1")
+# Clear all data in the "PlayerData" sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
+removeWorksheet(wb, "PlayerData")
+addWorksheet(wb, "PlayerData")
 
-# Initialize a variable to keep track of the column number
-col_number <- 1
+# Initialize a variable to keep track of the row number
+row_number <- 1
 
 # Loop through each element (tables) in desired_tables
 for (cat_id in names(desired_tables)) {
   # Get the data frame
   df <- desired_tables[[cat_id]]
   
-  
   # Write the modified data frame to the worksheet
-  writeData(wb, "PlayerData1", df, startCol = col_number, startRow = 1)
+  writeData(wb, "PlayerData", df, startCol = 1, startRow = row_number)
   
-  # Update the column number for the next data frame
-  col_number <- col_number + ncol(df) + 1  # Add 1 for the empty column
+  # Update the row number for the next data frame
+  row_number <- row_number + nrow(df) + 1  # Add 1 for the empty row
 }
 
-# Save the workbook
-saveWorkbook(wb, "PlayerData1.xlsx")
-
+# Save the workbook (overwrite the existing file)
+saveWorkbook(wb, "PlayerData.xlsx", overwrite = TRUE)
 
 
 
