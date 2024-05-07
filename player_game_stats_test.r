@@ -1,4 +1,10 @@
 library(rvest)
+library(stringr)
+library(dplyr)
+
+rm(list = ls())
+
+# This script is responsible for bringing in all of the player stats from the previous game played to be used in "L" section of player breakdowns
 
 # Define function to scrape player data
 scrape_player_data <- function(player_id, category_id) {
@@ -10,6 +16,9 @@ scrape_player_data <- function(player_id, category_id) {
 }
 
 # Define player IDs and category IDs
+# Could not figure out how to create list based on scraped data - only works for Augie and not an iterable solution
+# Will need to inspect element of the html code for next year's roster to update the values below
+# chatgpt can do this for you if you provide the code and make the request
 player_ids <- c(
   2882558,  # Alvarado, Michael
   2732033,  # Amiano, Joe
@@ -99,6 +108,7 @@ player_ids <- c(
   2732416,  # Splitt, Toby
   2887289,  # Sprecher, Tanner
   2888146,  # Stapleton, Miles
+  2887317,  # Stapleton, Peter
   2732558,  # Stitely, Hunter
   2599385,  # Straight, Dakota
   2257842,  # Swaney, Tim
@@ -120,6 +130,117 @@ player_ids <- c(
   2732538,  # Worrels, Ronde
   2888090   # Zitkus, Jimmy
 )
+jersey_numbers <- c(
+  11,   # Alvarado, Michael
+  81,   # Amiano, Joe
+  5,    # Banks, AJ
+  27,   # Baron, Mark
+  12,   # Bhardwaj, Cole
+  1,    # Bolton, John
+  26,   # Breeden, Johnny
+  16,   # Brosnan, Mikey
+  8,    # Brown, Nick
+  54,   # Brown, Owen
+  62,   # Buol, Tanner
+  60,   # Burton, Dylan
+  95,   # Byrne, Collin
+  47,   # Carone, Tristan
+  72,   # Castle, Max
+  35,   # Certa, Jack
+  56,   # Clem, Joren
+  11,   # Clevenger, Anthony
+  20,   # Coss, Jake
+  10,   # Crawley, Liam
+  41,   # Dettloff, Dylan
+  25,   # DiGioia, Mike
+  2,    # Estrada, Derek
+  83,   # Gallagher, Adam
+  65,   # Glendenning, Adam
+  5,    # Gorken, Ian
+  74,   # Grannis, Peyton
+  58,   # Gray, Matt
+  99,   # Gray, Zach
+  4,    # Grimes, Jason
+  90,   # Gustafsson, Ryan
+  15,   # Hall, Thomas
+  1,    # Hanson, Tez
+  19,   # Harper, Nick
+  76,   # Hartman, Ben
+  82,   # Henry, Nate
+  91,   # Hogan, Nick
+  31,   # Holcomb, Brett
+  40,   # Hopping, Parker
+  40,   # Houchin, Braden
+  89,   # Hulett, Nolin
+  39,   # Hunkins, Rukkus
+  49,   # Hunt, Dino
+  9,    # Inserra, Bobby
+  77,   # Johnson, Cain
+  94,   # Keany, Hugh
+  63,   # Kessler, Matthew
+  57,   # Klein, TJ
+  30,   # Landers, John
+  32,   # Lim, Josh
+  53,   # Lopez, Aaron
+  21,   # Ludlum, Ben
+  45,   # Lyons, Jack
+  66,   # Macdonald, Brayden
+  36,   # Macdonald, Tanner
+  57,   # Malloy, Ian
+  67,   # Marcelino, Ricardo
+  42,   # Maroon, Sidney
+  13,   # Marsh, Cooper
+  68,   # May, Colin
+  75,   # McDonough, Joey
+  18,   # McShaw, Kaden
+  79,   # Michaels, Zach
+  80,   # Miller, Jake
+  23,   # Mistak, Arik
+  81,   # Murdock, Blayden
+  59,   # Nieto, Teke
+  71,   # North, Jakob
+  55,   # Novak, Ryan
+  87,   # O'Boyle, Conor
+  64,   # Ogarek, Alec
+  28,   # Olson, Jack
+  22,   # Oregon, Darren
+  61,   # Ott, Zach
+  20,   # Peterson, Liam
+  97,   # Putman, Trevor
+  34,   # Rivelli, Tyler
+  59,   # Rodriguez, Antonio
+  92,   # Romano, Cole
+  84,   # Schlanser, Sean
+  78,   # Sheehan, Zac
+  7,    # Simon, Nate
+  52,   # Skold, Daniel
+  3,    # Smith, Breyden
+  9,    # Spillane, Tim
+  24,   # Splitt, Toby
+  31,   # Sprecher, Tanner
+  86,   # Stapleton, Miles
+  43,   # Stapleton, Peter
+  93,   # Stitely, Hunter
+  33,   # Straight, Dakota
+  50,   # Swaney, Tim
+  8,    # Tatum, Chase
+  60,   # Toland, Charles
+  98,   # Toole, Ryan
+  51,   # Uhlmann, Jacob
+  85,   # Unyi, Bill
+  6,    # Vaynerman, David
+  2,    # Vesey, Jordan
+  88,   # Vrabec, Ethan
+  96,   # Wells, Magnus
+  73,   # Williams, Zion
+  17,   # William, Ian
+  55,   # Willis, Luke
+  46,   # Wissel, Jason
+  38,   # Witkowski, Danny
+  69,   # Woodrey, Josh
+  44,   # Worrels, Ronde
+  70    # Zitkus, Jimmy
+)
 category_ids <- 15040:15057 
 
 # Initialize an empty list to store table data
@@ -139,6 +260,9 @@ for (player_id in player_ids) {
   # Store the player tables in the all_tables_data list
   all_tables_data[[as.character(player_id)]] <- player_tables
 }
+
+# Create a named vector
+jersey_mapping <- setNames(jersey_numbers, player_ids)
 
 # Initialize an empty list to store the desired tables
 desired_tables <- list()
@@ -169,6 +293,26 @@ for (player_id in names(all_tables_data)) {
     if (any(sapply(df[1, 5:ncol(df)], function(x) !is.na(x) && x != ""))) {
       # Store the data frame in the desired_tables list
       desired_tables[[paste0(player_id, "_", cat_id)]] <- df
+      
+      # Extract player ID from the name
+      player_id_extracted <- str_extract(player_id, "\\d+")
+      
+      # Find the index of the player_id_extracted in player_ids
+      index <- match(as.numeric(player_id_extracted), player_ids)
+      
+      # If player ID is found, extract the corresponding jersey number
+      if (!is.na(index)) {
+        jersey_number <- jersey_numbers[index]
+      } else {
+        # If player ID is not found, assign NA to jersey number
+        jersey_number <- ""
+      }
+      
+      # Create a new data frame with "Jersey" as the first column
+      new_df <- data.frame(Jersey = jersey_number, df)
+      
+      # Update the desired_tables list with the new data frame
+      desired_tables[[paste0(player_id, "_", cat_id)]] <- new_df
     }
   }
 }
@@ -178,3 +322,4 @@ for (cat_id in names(desired_tables)) {
   # Assign the data frame to a variable with a specific name (e.g., table_15040, table_15041, ...)
   assign(paste0("table_", cat_id), desired_tables[[cat_id]])
 }
+
