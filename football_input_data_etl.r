@@ -14,9 +14,10 @@ rm(list = ls())
 # MUST READ
 # For the lines below (through team_id_input), you need to run them one at a time and enter the desired values for each in the console area below
 # Make sure you click in the console interface before typing
-# Once you have entered your value and hit enter, these values will be stored as objects in the environment area (top right window)
+# Once you have typed your value and hit enter, these values will be stored as objects in the environment area (top right window)
 # For context on what values to enter, see comments above and below (text following the #'s) the next eight lines of code
-# The rest of the script begins on line 126 - can run the whole script from there on
+# Commented code pertaining to coach_df can be ignored if the head coach table extracted from ncaa stats team pages are sufficient for opposing teams 
+# The rest of the script begins on line 128 - can run the whole script from there on
 
 
 
@@ -63,6 +64,7 @@ teams_in_conference <- as.numeric(readline("Enter number of team's in chosen con
 # CCIW has 10
 # American Rivers has 9
 # WIAC has 8
+# Search ncaa stats conference ranking page for conferences other than 3 above
 
 # Prompt the user to enter input
 roster_website_url <- readline("Enter team's roster url: ")
@@ -79,7 +81,7 @@ roster_website_url <- readline("Enter team's roster url: ")
 # "WashU Bears" = https://washubears.com/sports/football/roster
 
 # # This input may be needed if team's roster webpage is not structured like those in the CCIW that we tested
-# # See comment on line 133 for further detail
+# # See comment on line 141 for further detail
 # coach_website_url <- readline("Enter team's coach url: ")
 
 # Prompt the user to enter input
@@ -122,6 +124,12 @@ team_id_input <- readline("Enter the team ID code: ")
 
 # actual code starts here - can be ran all at once unlike code above
 
+# URL for first page of any team on ncaa stats site
+schedule_results_url_base <- "https://stats.ncaa.org/teams/"
+
+# Construct the URL
+schedule_results_url <- paste0(schedule_results_url_base, year_team_classifier_input)
+
 # Read HTML content of the webpage
 webpage <- read_html(roster_website_url)
 
@@ -132,7 +140,7 @@ roster_tab <- webpage %>%
 
 # # NOTE: If you receive an error saying subscript is out of bounds, that means the roster page is structured differently than for teams in the CCIW
 # # Play with the index to see if that works
-# # If coach table is generating issues, uncomment the code below and update the code 14 lines down accordingly (e.g., change roster_tab to coach_tab) 
+# # If coach table is generating issues, uncomment the code below for coach_tab 
 
 # # Read HTML content of the webpage
 # webpage <- read_html(coach_website_url)
@@ -142,16 +150,43 @@ roster_tab <- webpage %>%
 #   html_nodes("table") %>%
 #   html_table(fill = TRUE)
 
+# Read the HTML content of the webpage
+page <- read_html(schedule_results_url)
+
+# Extract the data using XPath
+head_coach_data <- page %>%
+  html_nodes(xpath = '//*[@id="head_coaches_div"]/fieldset/label') %>%
+  html_text()
+
+head_coach_name <- page %>%
+  html_node("#head_coaches_div") %>%
+  html_nodes("label + *") %>%
+  html_text()
+
+# Extract the values using XPath
+head_coach_values <- page %>%
+  html_nodes(xpath = '//*[@id="head_coaches_div"]/fieldset/label/following-sibling::text()[1]') %>%
+  html_text(trim = TRUE)
+
+# Replace the first value with the name
+head_coach_values[1] <- head_coach_name[1]
+
+# Combine labels and values into a data frame
+head_coach_df <- data.frame(Label = head_coach_data, Value = head_coach_values)
+
 # Convert from lists to data frames
+
+# NOTE: use index of 3 for CCIW teams # may be different for other teams as can be seen in the commented line below
 df_roster <- as.data.frame(roster_tab[[3]])
+# df_roster <- as.data.frame(roster_tab[[1]])
 opp_df_roster <- df_roster[, colSums(is.na(df_roster)) == 0]
 
-coach_df <- as.data.frame(roster_tab[[4]])
-#coach_df without NA columns for images
-opp_coach_df <- coach_df[, c(2, 3)]
+# coach_df <- as.data.frame(roster_tab[[4]])
+# #coach_df without NA columns for images
+# opp_coach_df <- coach_df[, c(2, 3)]
 
 # Load existing Excel file
-wb <- loadWorkbook("Football Spotterboards - Copy.xlsx")
+wb <- loadWorkbook("OpponentData.xlsx")
 
 # Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
 removeWorksheet(wb, "OppRoster")
@@ -159,17 +194,12 @@ addWorksheet(wb, "OppRoster")
 
 # Write the first dataframe to the Excel file starting at row 1, column 1
 writeData(wb, sheet = "OppRoster", x = opp_df_roster, startRow = 1, startCol = 1)
-writeData(wb, sheet = "OppRoster", x = opp_coach_df, startRow = 1, startCol = 11)
+writeData(wb, sheet = "OppRoster", x = head_coach_df, startRow = 1, startCol = 11)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "OpponentData.xlsx", overwrite = TRUE)
 
 
-# URL for first page of any team on ncaa stats site
-schedule_results_url_base <- "https://stats.ncaa.org/teams/"
-
-# Construct the URL
-schedule_results_url <- paste0(schedule_results_url_base, year_team_classifier_input)
 
 # Read HTML content of the webpage
 webpage <- read_html(schedule_results_url)
@@ -209,7 +239,7 @@ writeData(wb, sheet = "OppScheduleResults", x = opp_team_stats, startRow = 1, st
 writeData(wb, sheet = "OppScheduleResults", x = opp_individual_stat_leaders, startRow = 1, startCol = 10)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "OpponentData.xlsx", overwrite = TRUE)
 
 
 
@@ -238,6 +268,7 @@ colnames(roster_df) <- roster_df[1, ]
 
 # Remove the first row
 roster_df <- roster_df[-1, ]
+
 
 
 # URL of the team stats page
@@ -282,6 +313,8 @@ for (i in 1:length(all_tables_data)) {
   if (ncol(df) > 21) {
     df <- df[, -(1:21)]
   }
+  
+  df[[2]] <- as.numeric(df[[2]])
   
   # Assign the dataframe to a name
   assign(paste0("table_", i), df)
@@ -348,6 +381,51 @@ opp_turnover_margin_team_stats <- opp_turnover_margin_team_stats %>%
 opp_participation_team_stats <- opp_participation_team_stats %>%
   mutate_all(~ ifelse(is.na(.), "", .))
 
+# Define a function to convert values to numeric and remove commas
+convert_to_numeric <- function(x) {
+  as.numeric(gsub(",", "", ifelse(is.na(x), "", x)))
+}
+
+# Apply the function above to team_stats data frames to ensure Excel lookup formulas work properly
+columns_to_convert <- c(2, 7:ncol(opp_rushing_team_stats))
+opp_rushing_team_stats[columns_to_convert] <- lapply(opp_rushing_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_first_downs_team_stats))
+opp_first_downs_team_stats[columns_to_convert] <- lapply(opp_first_downs_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_passing_team_stats))
+opp_passing_team_stats[columns_to_convert] <- lapply(opp_passing_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_receiving_team_stats))
+opp_receiving_team_stats[columns_to_convert] <- lapply(opp_receiving_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_total_offense_team_stats))
+opp_total_offense_team_stats[columns_to_convert] <- lapply(opp_total_offense_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_all_purpose_yards_team_stats))
+opp_all_purpose_yards_team_stats[columns_to_convert] <- lapply(opp_all_purpose_yards_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_scoring_team_stats))
+opp_scoring_team_stats[columns_to_convert] <- lapply(opp_scoring_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_sacks_team_stats))
+opp_sacks_team_stats[columns_to_convert] <- lapply(opp_sacks_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_tackles_team_stats))
+opp_tackles_team_stats[columns_to_convert] <- lapply(opp_tackles_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_passes_defended_team_stats))
+opp_passes_defended_team_stats[columns_to_convert] <- lapply(opp_passes_defended_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_fumbles_team_stats))
+opp_fumbles_team_stats[columns_to_convert] <- lapply(opp_fumbles_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_kicking_team_stats))
+opp_kicking_team_stats[columns_to_convert] <- lapply(opp_kicking_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_punting_team_stats))
+opp_punting_team_stats[columns_to_convert] <- lapply(opp_punting_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_punt_returns_team_stats))
+opp_punt_returns_team_stats[columns_to_convert] <- lapply(opp_punt_returns_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_ko_and_ko_return_team_stats))
+opp_ko_and_ko_return_team_stats[columns_to_convert] <- lapply(opp_ko_and_ko_return_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_redzone_team_stats))
+opp_redzone_team_stats[columns_to_convert] <- lapply(opp_redzone_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_defense_team_stats))
+opp_defense_team_stats[columns_to_convert] <- lapply(opp_defense_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_turnover_margin_team_stats))
+opp_turnover_margin_team_stats[columns_to_convert] <- lapply(opp_turnover_margin_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(opp_participation_team_stats))
+opp_participation_team_stats[columns_to_convert] <- lapply(opp_participation_team_stats[columns_to_convert], convert_to_numeric)
+
 # Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
 removeWorksheet(wb, "OppTeamStats")
 addWorksheet(wb, "OppTeamStats")
@@ -373,7 +451,8 @@ writeData(wb, sheet = "OppTeamStats", x = opp_turnover_margin_team_stats, startR
 writeData(wb, sheet = "OppTeamStats", x = opp_participation_team_stats, startRow = 1, startCol = 317)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "OpponentData.xlsx", overwrite = TRUE)
+
 
 
 # URL of the game by game page
@@ -526,7 +605,7 @@ writeData(wb, sheet = "OppGameStats", x = opp_defense_game_stats, startRow = 1, 
 writeData(wb, sheet = "OppGameStats", x = opp_turnover_margin_game_stats, startRow = 1, startCol = 208)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "OpponentData.xlsx", overwrite = TRUE)
 
 
 
@@ -632,8 +711,6 @@ transformed_df$LeaderValue <- trimws(leader_values)
 # Revert the naming of the dataframe
 opp_conf_table <- transformed_df
 
-
-
 # Rename the sixth column to "LeaderValue"
 colnames(opp_conf_table_2)[6] <- "LeaderValue"
 
@@ -725,4 +802,4 @@ writeData(wb, sheet = "OppRankings", x = opp_conf_table, startRow = 1, startCol 
 writeData(wb, sheet = "OppRankings", x = opp_conf_table_2, startRow = 1, startCol = 27)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "OpponentData.xlsx", overwrite = TRUE)
