@@ -314,6 +314,10 @@ for (player_id in names(all_tables_data)) {
       # Create a new data frame with "Jersey" as the first column
       new_df <- data.frame(Jersey = jersey_number, df)
       
+      # Transpose the df
+      new_df <- t(new_df)
+      new_df <- as.data.frame(new_df)
+      
       # Update the desired_tables list with the new data frame
       desired_tables[[paste0(player_id, "_", cat_id)]] <- new_df
     }
@@ -325,5 +329,31 @@ for (cat_id in names(desired_tables)) {
   # Assign the data frame to a variable with a specific name (e.g., table_15040, table_15041, ...)
   assign(paste0("table_", cat_id), desired_tables[[cat_id]])
 }
+
+# Create a new workbook
+wb <- createWorkbook()
+
+# Add a worksheet to the workbook
+addWorksheet(wb, "PlayerData3")
+
+# Initialize a variable to keep track of the column number
+col_number <- 1
+
+# Loop through each element (tables) in desired_tables
+for (cat_id in names(desired_tables)) {
+  # Get the data frame
+  df <- desired_tables[[cat_id]]
+  
+  
+  # Write the modified data frame to the worksheet
+  writeData(wb, "PlayerData3", df, startCol = col_number, startRow = 1)
+  
+  # Update the column number for the next data frame
+  col_number <- col_number + ncol(df) + 1  # Add 1 for the empty column
+}
+
+# Save the workbook
+saveWorkbook(wb, "PlayerData3.xlsx")
+
 
 
