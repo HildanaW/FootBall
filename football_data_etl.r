@@ -5,6 +5,7 @@ library(tidyr)
 library(dplyr)
 library(stringr)
 library(openxlsx)
+library(data.table)
 
 rm(list = ls())
 
@@ -15,8 +16,11 @@ rm(list = ls())
 # Since this code does not accept/require inputs, the urls will need to be manually updated
 # Any 16460 value in a url should be replaced with 16680 for 2024-25
 # The year value in the national_ranking_summary_url will need to be changed from 2024 to 2025
+# All url objects are preceded by a 3 line break
 
 # This code can be ran all at one time
+
+
 
 roster_website_url <- "https://athletics.augustana.edu/sports/football/roster?view=2"
 
@@ -36,21 +40,22 @@ coach_df <- as.data.frame(roster_tab[[4]])
 coach_df <- coach_df[, c(2, 3)]
 
 # Load existing Excel file
-wb <- loadWorkbook("Football Spotterboards - Copy.xlsx")
+wb <- loadWorkbook("AugieData.xlsx")
 
 # Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
 removeWorksheet(wb, "Roster")
 addWorksheet(wb, "Roster")
 
-# Write the first dataframe to the Excel file starting at row 1, column 1
+# Write the data frames to the Excel file and assign columns for iterability
 writeData(wb, sheet = "Roster", x = df_roster, startRow = 1, startCol = 1)
 writeData(wb, sheet = "Roster", x = coach_df, startRow = 1, startCol = 11)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "AugieData.xlsx", overwrite = TRUE)
 
 
-# URL for first page of any team on ncaa stats site
+
+# URL for first page of team on ncaa stats site
 schedule_results_url <- "https://stats.ncaa.org/teams/558188"
 
 # Read HTML content of the webpage
@@ -82,7 +87,7 @@ individual_stat_leaders <- chart_4[-1, ]
 
 schedule_results <- chart_2[c(TRUE, FALSE), ]
 
-# Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
+# Clear all data in the sheet - run the code below if writing to the same workbook as previous; otherwise comment (#) the line below
 removeWorksheet(wb, "ScheduleResults")
 addWorksheet(wb, "ScheduleResults")
 
@@ -91,7 +96,7 @@ writeData(wb, sheet = "ScheduleResults", x = team_stats, startRow = 1, startCol 
 writeData(wb, sheet = "ScheduleResults", x = individual_stat_leaders, startRow = 1, startCol = 10)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "AugieData.xlsx", overwrite = TRUE)
 
 
 
@@ -106,7 +111,7 @@ roster_table <- webpage %>%
   html_nodes("table") %>%
   html_table(fill = TRUE)
 
-# Extract the roster dataframe (assuming it's the first table)
+# Extract the roster data frame (assuming it's the first table)
 roster_df <- as.data.frame(roster_table[[1]])
 
 # Remove rows containing only "Roster"
@@ -165,11 +170,13 @@ for (i in 1:length(all_tables_data)) {
     df <- df[, -(1:21)]
   }
   
+  df[[2]] <- as.numeric(df[[2]])
+  
   # Assign the dataframe to a name
   assign(paste0("table_", i), df)
 }
 
-# Rename the data frames
+# Rename the data frames for ease of loading into Excel
 rushing_team_stats <- table_1
 first_downs_team_stats <- table_2
 passing_team_stats <- table_3
@@ -190,7 +197,7 @@ defense_team_stats <- table_17
 turnover_margin_team_stats <- table_18
 participation_team_stats <- table_19
 
-# Replace NA values with blanks in each dataframe to prevent errors when loading data into excel
+# Replace NA values with blanks in each data frame to prevent errors when loading data into excel
 rushing_team_stats <- rushing_team_stats %>%
   mutate_all(~ ifelse(is.na(.), "", .))
 first_downs_team_stats <- first_downs_team_stats %>%
@@ -230,6 +237,51 @@ turnover_margin_team_stats <- turnover_margin_team_stats %>%
 participation_team_stats <- participation_team_stats %>%
   mutate_all(~ ifelse(is.na(.), "", .))
 
+# Define a function to convert values to numeric and remove commas
+convert_to_numeric <- function(x) {
+  as.numeric(gsub(",", "", ifelse(is.na(x), "", x)))
+}
+
+# Apply the function above to team_stats data frames to ensure Excel lookup formulas work properly
+columns_to_convert <- c(2, 7:ncol(rushing_team_stats))
+rushing_team_stats[columns_to_convert] <- lapply(rushing_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(first_downs_team_stats))
+first_downs_team_stats[columns_to_convert] <- lapply(first_downs_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(passing_team_stats))
+passing_team_stats[columns_to_convert] <- lapply(passing_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(receiving_team_stats))
+receiving_team_stats[columns_to_convert] <- lapply(receiving_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(total_offense_team_stats))
+total_offense_team_stats[columns_to_convert] <- lapply(total_offense_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(all_purpose_yards_team_stats))
+all_purpose_yards_team_stats[columns_to_convert] <- lapply(all_purpose_yards_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(scoring_team_stats))
+scoring_team_stats[columns_to_convert] <- lapply(scoring_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(sacks_team_stats))
+sacks_team_stats[columns_to_convert] <- lapply(sacks_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(tackles_team_stats))
+tackles_team_stats[columns_to_convert] <- lapply(tackles_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(passes_defended_team_stats))
+passes_defended_team_stats[columns_to_convert] <- lapply(passes_defended_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(fumbles_team_stats))
+fumbles_team_stats[columns_to_convert] <- lapply(fumbles_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(kicking_team_stats))
+kicking_team_stats[columns_to_convert] <- lapply(kicking_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(punting_team_stats))
+punting_team_stats[columns_to_convert] <- lapply(punting_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(punt_returns_team_stats))
+punt_returns_team_stats[columns_to_convert] <- lapply(punt_returns_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(ko_and_ko_return_team_stats))
+ko_and_ko_return_team_stats[columns_to_convert] <- lapply(ko_and_ko_return_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(redzone_team_stats))
+redzone_team_stats[columns_to_convert] <- lapply(redzone_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(defense_team_stats))
+defense_team_stats[columns_to_convert] <- lapply(defense_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(turnover_margin_team_stats))
+turnover_margin_team_stats[columns_to_convert] <- lapply(turnover_margin_team_stats[columns_to_convert], convert_to_numeric)
+columns_to_convert <- c(2, 7:ncol(participation_team_stats))
+participation_team_stats[columns_to_convert] <- lapply(participation_team_stats[columns_to_convert], convert_to_numeric)
+
 # Clear all data in the sheet - run the code below if writing to same the workbook as previous; otherwise comment (#) the line below
 removeWorksheet(wb, "TeamStats")
 addWorksheet(wb, "TeamStats")
@@ -255,7 +307,7 @@ writeData(wb, sheet = "TeamStats", x = turnover_margin_team_stats, startRow = 1,
 writeData(wb, sheet = "TeamStats", x = participation_team_stats, startRow = 1, startCol = 317)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "AugieData.xlsx", overwrite = TRUE)
 
 
 
@@ -408,7 +460,7 @@ writeData(wb, sheet = "GameStats", x = defense_game_stats, startRow = 1, startCo
 writeData(wb, sheet = "GameStats", x = turnover_margin_game_stats, startRow = 1, startCol = 208)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "AugieData.xlsx", overwrite = TRUE)
 
 
 
@@ -514,8 +566,6 @@ transformed_df$LeaderValue <- trimws(leader_values)
 # Revert the naming of the dataframe
 conf_table <- transformed_df
 
-
-
 # Rename the sixth column to "LeaderValue"
 colnames(conf_table_2)[6] <- "LeaderValue"
 
@@ -606,7 +656,7 @@ writeData(wb, sheet = "Rankings", x = conf_table, startRow = 1, startCol = 20)
 writeData(wb, sheet = "Rankings", x = conf_table_2, startRow = 1, startCol = 27)
 
 # Save the modified Excel file
-saveWorkbook(wb, "Football Spotterboards - Copy.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "AugieData.xlsx", overwrite = TRUE)
 
 
 
