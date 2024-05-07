@@ -1,6 +1,8 @@
 library(rvest)
 library(stringr)
 library(dplyr)
+library(tidyr)
+library(openxlsx)
 
 rm(list = ls())
 
@@ -261,6 +263,11 @@ for (player_id in player_ids) {
   all_tables_data[[as.character(player_id)]] <- player_tables
 }
 
+# Define a function to convert values to numeric
+convert_to_numeric <- function(x) {
+  ifelse(x == "", "", as.numeric(x))
+}
+
 # Create a named vector
 jersey_mapping <- setNames(jersey_numbers, player_ids)
 
@@ -314,12 +321,22 @@ for (player_id in names(all_tables_data)) {
       # Create a new data frame with "Jersey" as the first column
       new_df <- data.frame(Jersey = jersey_number, df)
       
-      # Transpose the df
-      new_df <- t(new_df)
-      new_df <- as.data.frame(new_df)
+      # Convert to long format while keeping "Jersey" as the first column
+      new_df_long <- pivot_longer(new_df, cols = -Jersey, names_to = "Category", values_to = "Value")
+      
+      # Add a new row with jersey number information
+      new_row <- data.frame(Jersey = jersey_number, Category = "Jersey", Value = jersey_number)
+      new_df_final <- rbind(new_row, new_df_long)
+      
+      # Remove the "Jersey" column
+      new_df_final <- subset(new_df_final, select = -c(Jersey))
+      
+      # Apply the function to the specified range
+      new_df_final$Value[1] <- ifelse(new_df_final$Category[1] == "Value", convert_to_numeric(new_df_final$Value[1]), new_df_final$Value[1])
+      new_df_final$Value[6:nrow(new_df_final)] <- convert_to_numeric(new_df_final$Value[6:nrow(new_df_final)])
       
       # Update the desired_tables list with the new data frame
-      desired_tables[[paste0(player_id, "_", cat_id)]] <- new_df
+      desired_tables[[paste0(player_id, "_", cat_id)]] <- new_df_final
     }
   }
 }
@@ -334,7 +351,7 @@ for (cat_id in names(desired_tables)) {
 wb <- createWorkbook()
 
 # Add a worksheet to the workbook
-addWorksheet(wb, "PlayerData3")
+addWorksheet(wb, "PlayerData1")
 
 # Initialize a variable to keep track of the column number
 col_number <- 1
@@ -346,14 +363,15 @@ for (cat_id in names(desired_tables)) {
   
   
   # Write the modified data frame to the worksheet
-  writeData(wb, "PlayerData3", df, startCol = col_number, startRow = 1)
+  writeData(wb, "PlayerData1", df, startCol = col_number, startRow = 1)
   
   # Update the column number for the next data frame
   col_number <- col_number + ncol(df) + 1  # Add 1 for the empty column
 }
 
 # Save the workbook
-saveWorkbook(wb, "PlayerData3.xlsx")
+saveWorkbook(wb, "PlayerData1.xlsx")
+
 
 
 
